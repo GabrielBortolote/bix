@@ -12,4 +12,4 @@ Um requisito desse desafio é que essa movimentação de dados seja feita diaria
 
 Para ficar mais claro, segue uma imagem da arquitetura desejada:
 
-![challenge](./readme_images/chanllenge.png/)
+![challenge](./readme_images/challenge.png/)
