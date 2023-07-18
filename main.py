@@ -5,23 +5,34 @@ from datetime import datetime
 # third part import
 import yaml
 import pandas as pd
+from sqlalchemy import Engine
 
 # local imports
 from connect import postgres_connection
 from fetchers import fetch_data, fetch_categories, fetch_names
-import credentials
 from create_logger import create_logger
+import credentials
 
 # global variables
 global logger
 
-def main(
-    postgres_server_connection,
-    postgres_local_connection,
-    postgres_query,
-    api_url,
-    parquet_url,
-):
+def main(postgres_server_connection:Engine, postgres_local_connection:Engine, postgres_query:str,
+         api_url:str, parquet_url:str):
+    """
+    This function compiles all the methods created in this project into a main execution. The main
+    execution connects 3 different sources of data: Postgres database located on a server, API data
+    and parquet file data. The data is loaded as dataframes, joined and them saved in a local
+    postgres database.
+
+    Parameters:
+        - postgres_server_connection (sqlalchemy.Engine): The SQLAlchemy Engine object representing
+          the connection to the PostgreSQL server.
+        - postgres_local_connection (sqlalchemy.Engine): The SQLAlchemy Engine object representing
+          the connection to the local PostgreSQL database.
+        - postgres_query (str): The SQL query to retrieve data from the PostgreSQL server.
+        - api_url (str): The base URL of the API to fetch employee names.
+        - parquet_url (str): The URL of the Parquet file to fetch data from.
+    """
 
     # fetching requested data
     logger.info('Fetching data')
@@ -39,6 +50,7 @@ def main(
     df.to_sql('venda', postgres_local_connection, index=False, if_exists='replace')
 
 if __name__ == '__main__':
+    
     # load configurations
     with open('config.yaml') as config_file:
         config = yaml.safe_load(config_file)

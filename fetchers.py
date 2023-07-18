@@ -6,11 +6,22 @@ import requests
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+from sqlalchemy import Engine
 
 # get pre-defined logger
 logger = logging.getLogger('default_logger')
 
-def fetch_data(connection, query):
+def fetch_data(connection:Engine, query:str) -> pd.DataFrame:
+    """
+    Fetch data from a PostgreSQL server using a provided SQL query.
+
+    Parameters:
+        - connection (sqlalchemy.Engine): The connection object to the PostgreSQL database.
+        - query (str): The SQL query to retrieve the data.
+
+    Returns:
+        - pd.DataFrame: A pandas DataFrame containing the fetched data from the database.
+    """
 
     logger.debug("querying data from postgres server")
     df = pd.read_sql_query(query, connection)
@@ -18,7 +29,18 @@ def fetch_data(connection, query):
 
     return df
 
-def fetch_names(ids, base_url):
+def fetch_names(ids:list, base_url:str) -> pd.DataFrame:
+    """
+    Fetch names for a list of employee IDs from an API.
+
+    Parameters:
+        - ids (list): List of employee IDs.
+        - base_url (str): The base URL of the API to fetch names from.
+
+    Returns:
+        - pd.DataFrame: A pandas DataFrame containing the fetched names for the provided IDs.
+    """
+
     # creating df structure
     logger.debug('creating names dataframe')
     df = pd.DataFrame(columns=['id_funcionario', 'nome_funcionario'])
@@ -46,9 +68,19 @@ def fetch_names(ids, base_url):
 
     return df
 
-def fetch_categories(url):
+def fetch_categories(url:str) -> pd.DataFrame:
+    """
+    Fetch data from a Parquet file using the provided URL.
+
+    Parameters:
+        - url (str): The URL of the Parquet file to fetch the data from.
+
+    Returns:
+        - pd.DataFrame: A pandas DataFrame containing the fetched data from the Parquet file.
+    """
+
     logger.debug('fetching data from parquet file')
-    logger.debug(f'file addres: {url}')
+    logger.debug(f'file address: {url}')
     try:
         response = requests.get(url)
         if response.status_code == 200:
