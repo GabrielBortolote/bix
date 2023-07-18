@@ -13,3 +13,6 @@ Output:
     port: 5432
     database: bix_challenge
 
+Paths:
+    log: /home/borto/Projects/bix/log
+

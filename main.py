@@ -1,3 +1,8 @@
+# built-in imports
+import os
+from datetime import datetime
+
+# third part import
 import yaml
 import pandas as pd
 
@@ -5,6 +10,10 @@ import pandas as pd
 from connect import postgres_connection
 from fetchers import fetch_data, fetch_categories, fetch_names
 import credentials
+from create_logger import create_logger
+
+# global variables
+global logger
 
 def main(
     postgres_server_connection,
@@ -15,18 +24,18 @@ def main(
 ):
 
     # fetching requested data
-    print('Fetching data')
+    logger.info('Fetching data')
     df = fetch_data(postgres_server_connection, postgres_query)
     names_df = fetch_names(list(df['id_funcionario'].unique()), api_url)
     categories_df = fetch_categories(parquet_url)
 
     # merge fetched data into a definitive dataframe
-    print('Merging dataframes')
+    logger.info('Merging dataframes')
     df = pd.merge(df, names_df, on='id_funcionario', how='left')
     df = pd.merge(df, categories_df, on='id_categoria', how='left')
 
     # flush data into local table
-    print('Flush data into local table')
+    logger.info('Flush data into local table')
     df.to_sql('venda', postgres_local_connection, index=False, if_exists='replace')
 
 if __name__ == '__main__':
@@ -34,7 +43,11 @@ if __name__ == '__main__':
     with open('config.yaml') as config_file:
         config = yaml.safe_load(config_file)
 
-    # calling main procedure
+    # initialize logger object
+    file_name = f"{datetime.now().strftime('%d-%m-%Y-%H-%M-%S-%f')}.log"
+    logger = create_logger(os.path.join(config['Paths']['log'], file_name))
+
+    # calling main procedure    
     main(
         postgres_server_connection=postgres_connection(
             username=credentials.db_user,
