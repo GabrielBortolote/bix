@@ -8,7 +8,7 @@ def create_logger(path):
 
     # Create a console handler and set the log level
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)  # Set the desired console log level
+    console_handler.setLevel(logging.DEBUG)  # Set the desired console log level
 
     # Create a file handler and set the log level
     file_handler = logging.FileHandler(path)
