@@ -1,99 +1,49 @@
-import requests
-import pyarrow as pa
-import pyarrow.parquet as pq
 import pandas as pd
 from sqlalchemy import create_engine
 
 # local imports
-from credentials import db_user, db_pass, local_db_user, local_db_pass
+from config import config
+from fetchers import fetch_data, fetch_categories, fetch_names
+import credentials
 
-def fetch_data( dbname, host, port, user, password):
+def main(
+    postgres_server_connection,
+    postgres_local_connection,
+    postgres_query,
+    api_url,
+    parquet_url,
+):
 
-    print("Connecting with postgres server")
-    engine = create_engine(f'postgresql://{user}:{password}@{host}:{port}/{dbname}')
+    # fetching requested data
+    print('Fetching data')
+    df = fetch_data(postgres_server_connection, postgres_query)
+    names_df = fetch_names(list(df['id_funcionario'].unique()), api_url)
+    categories_df = fetch_categories(parquet_url)
 
-    print("Querying data")
-    query = "SELECT * FROM public.venda;"
-    df = pd.read_sql_query(query, engine)
-    print(f'{df.shape[0]} rows fetched from postgres database')
+    # merge fetched data into a definitive dataframe
+    print('Merging dataframes')
+    df = pd.merge(df, names_df, on='id_funcionario', how='left')
+    df = pd.merge(df, categories_df, on='id_categoria', how='left')
 
-    return df
+    # flush data into local table
+    print('Flush data into local table')
+    df.to_sql('venda', postgres_local_connection, index=False, if_exists='replace')
 
-def fetch_names(ids):
-    df = pd.DataFrame(columns=['id_funcionario', 'nome_funcionario'])
+if __name__ == '__main__':
+    # build connection strings
+    server_string_connection =  f'postgresql://{credentials.db_user}:{credentials.db_pass}'
+    server_string_connection += f'@{config["server"]["host"]}:{config["server"]["port"]}'
+    server_string_connection += f'/{config["server"]["dbname"]}'
 
-    for value in ids:
+    local_string_connection =  f'postgresql://{credentials.local_db_user}:{credentials.local_db_pass}'
+    local_string_connection += f'@{config["local"]["host"]}:{config["local"]["port"]}'
+    local_string_connection += f'/{config["local"]["dbname"]}'
 
-        # if the name was not fetched yet, fetch it
-        if not df['id_funcionario'].isin([value]).any():
-            print(f'Fetching name for id {value} from API')
-            url = f"https://us-central1-bix-tecnologia-prd.cloudfunctions.net/api_challenge_junior?id={value}"
-            try:
-                response = requests.get(url)
-
-                # Check if the request was successful (status code 200)
-                if response.status_code == 200:
-                    df.loc[len(df)] = [value, response.text]
-                    
-                else:
-                    print(f"Failed to fetch data. Status code: {response.status_code}")
-
-            except requests.exceptions.RequestException as e:
-                print("Error while making the request:", e)
-
-    
-    return df
-
-def fetch_categories():
-    url = "https://storage.googleapis.com/challenge_junior/categoria.parquet"
-
-    try:
-        response = requests.get(url)
-
-        # Check if the request was successful (status code 200)
-        if response.status_code == 200:
-            
-            # Assuming 'parquet_data_bytes' contains the bytes of the Parquet data from the web request
-            parquet_data = pa.BufferReader(response.content)
-
-            # Read the Parquet data from the bytes and create a PyArrow Table
-            table = pq.read_table(parquet_data)
-            print(f'{table.num_rows} rows were fetched from the parquet file')
-
-            # Convert it to pandas dataframe
-            df = table.to_pandas()
-            df.rename(columns={'id': 'id_categoria'}, inplace=True)
-            return df
-
-        else:
-            print(f"Failed to fetch data. Status code: {response.status_code}")
-
-    except requests.exceptions.RequestException as e:
-        print("Error while making the request:", e)
-
-# fetching requested data
-print('Fetching data')
-df = fetch_data(
-    dbname = "postgres",
-    host = "34.173.103.16",
-    port = "5432",
-    user = db_user,
-    password = db_pass,
-)
-names_df = fetch_names(list(df['id_funcionario'].unique()))
-categories_df = fetch_categories()
-
-print('Merging dataframes')
-df = pd.merge(df, names_df, on='id_funcionario', how='left')
-df = pd.merge(df, categories_df, on='id_categoria', how='left')
-
-# connect to output database
-print('Connecting to local postgres server')
-host = 'localhost'
-port = '5432'
-dbname = 'bix_challenge'
-engine = create_engine(f'postgresql://{local_db_user}:{local_db_pass}@{host}:{port}/{dbname}')
-
-# flush data into local table
-print('Flush data into local table')
-df.to_sql('venda', engine, index=False, if_exists='replace')
+    # calling main procedure
+    main(
+        postgres_server_connection=create_engine(server_string_connection),
+        postgres_local_connection=create_engine(local_string_connection),
+        postgres_query=config['postgres_query'],
+        api_url=config['api_url'],
+        parquet_url=config['parquet_url']
+    )
