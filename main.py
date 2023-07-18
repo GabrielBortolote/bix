@@ -1,8 +1,8 @@
+import yaml
 import pandas as pd
 
 # local imports
 from connect import postgres_connection
-from config import config
 from fetchers import fetch_data, fetch_categories, fetch_names
 import credentials
 
@@ -30,20 +30,27 @@ def main(
     df.to_sql('venda', postgres_local_connection, index=False, if_exists='replace')
 
 if __name__ == '__main__':
+    # load configurations
+    with open('config.yaml') as config_file:
+        config = yaml.safe_load(config_file)
+
     # calling main procedure
     main(
         postgres_server_connection=postgres_connection(
             username=credentials.db_user,
             password=credentials.db_pass,
-            database_name=config['server']['dbname'],
-            host=config['server']['host']
+            database_name=config['Postgres']['database'],
+            host=config['Postgres']['host'],
+            port=config['Postgres']['port'],
         ),
         postgres_local_connection=postgres_connection(
             username=credentials.local_db_user,
             password=credentials.local_db_pass,
-            database_name=config['local']['dbname'],
+            database_name=config['Output']['database'],
+            host=config['Output']['host'],
+            port=config['Output']['port'],
         ),
-        postgres_query=config['postgres_query'],
-        api_url=config['api_url'],
-        parquet_url=config['parquet_url']
+        postgres_query=config['Postgres']['query'],
+        api_url=config['Urls']['api'],
+        parquet_url=config['Urls']['parquet']
     )
