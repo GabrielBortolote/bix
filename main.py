@@ -1,7 +1,7 @@
 import pandas as pd
-from sqlalchemy import create_engine
 
 # local imports
+from connect import postgres_connection
 from config import config
 from fetchers import fetch_data, fetch_categories, fetch_names
 import credentials
@@ -30,19 +30,19 @@ def main(
     df.to_sql('venda', postgres_local_connection, index=False, if_exists='replace')
 
 if __name__ == '__main__':
-    # build connection strings
-    server_string_connection =  f'postgresql://{credentials.db_user}:{credentials.db_pass}'
-    server_string_connection += f'@{config["server"]["host"]}:{config["server"]["port"]}'
-    server_string_connection += f'/{config["server"]["dbname"]}'
-
-    local_string_connection =  f'postgresql://{credentials.local_db_user}:{credentials.local_db_pass}'
-    local_string_connection += f'@{config["local"]["host"]}:{config["local"]["port"]}'
-    local_string_connection += f'/{config["local"]["dbname"]}'
-
     # calling main procedure
     main(
-        postgres_server_connection=create_engine(server_string_connection),
-        postgres_local_connection=create_engine(local_string_connection),
+        postgres_server_connection=postgres_connection(
+            username=credentials.db_user,
+            password=credentials.db_pass,
+            database_name=config['server']['dbname'],
+            host=config['server']['host']
+        ),
+        postgres_local_connection=postgres_connection(
+            username=credentials.local_db_user,
+            password=credentials.local_db_pass,
+            database_name=config['local']['dbname'],
+        ),
         postgres_query=config['postgres_query'],
         api_url=config['api_url'],
         parquet_url=config['parquet_url']
