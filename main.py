@@ -13,6 +13,7 @@ from connect import postgres_connection
 from fetchers import fetch_data, fetch_categories, fetch_names
 from create_logger import create_logger
 import credentials
+from visualization import create_data_visualization
 
 # global variables
 global logger
@@ -49,6 +50,9 @@ def main(postgres_server_connection:Engine, postgres_local_connection:Engine, po
     # flush data into local table
     logger.info('Flush data into local table')
     df.to_sql('venda', postgres_local_connection, index=False, if_exists='replace')
+
+    # create visualizations
+    create_data_visualization(df)
 
 if __name__ == '__main__':
 
