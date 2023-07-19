@@ -7,6 +7,8 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 from sqlalchemy import Engine
+import asyncio
+import aiohttp
 
 # get pre-defined logger
 logger = logging.getLogger('default_logger')
@@ -29,7 +31,7 @@ def fetch_data(connection:Engine, query:str) -> pd.DataFrame:
 
     return df
 
-def fetch_names(ids:list, base_url:str) -> pd.DataFrame:
+async def fetch_names(ids:list, base_url:str) -> pd.DataFrame:
     """
     Fetch names for a list of employee IDs from an API.
 
@@ -43,30 +45,23 @@ def fetch_names(ids:list, base_url:str) -> pd.DataFrame:
 
     # creating df structure
     logger.debug('creating names dataframe')
-    df = pd.DataFrame(columns=['id_funcionario', 'nome_funcionario'])
 
-    for value in ids:
+    # build all urls to be accessed
+    urls = [f"{base_url}?id={value}" for value in ids]
+    
+    # declare aysnc function to perform the requests
+    async def get_url_data(url):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                return await response.text()
+            
+    # create tasks for each request
+    tasks = [get_url_data(url) for url in urls]
 
-        # if the name was not fetched yet, fetch it
-        if not df['id_funcionario'].isin([value]).any():
+    # Wait for all tasks to complete
+    results = await asyncio.gather(*tasks)
 
-            logger.debug(f'fetching name for id {value} from API')
-            url = f"{base_url}?id={value}"
-            try:
-                response = requests.get(url)
-
-                # Check if the request was successful (status code 200)
-                if response.status_code == 200:
-                    logger.debug(f'fetched name: {response.text}')
-                    df.loc[len(df)] = [value, response.text]
-                    
-                else:
-                    logger.error(f"Failed to fetch data. Status code: {response.status_code}")
-
-            except requests.exceptions.RequestException as e:
-                logger.error("Error while making the request:", e)
-
-    return df
+    return pd.DataFrame({'id_funcionario': ids, 'nome_funcionario': results})
 
 def fetch_categories(url:str) -> pd.DataFrame:
     """

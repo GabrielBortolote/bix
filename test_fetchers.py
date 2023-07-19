@@ -1,12 +1,11 @@
 # third party imports
 import yaml
 import unittest
+import asyncio
 
 # local imports
 import credentials
 from connect import postgres_connection
-
-# Import the functions to test (assuming they are in the same module)
 from fetchers import fetch_data, fetch_names, fetch_categories
 
 class TestYourFunctions(unittest.TestCase):
@@ -45,7 +44,7 @@ class TestYourFunctions(unittest.TestCase):
     # Test fetch_names function
     def test_fetch_names(self):
         
-        df = fetch_names(ids=[1], base_url=self.config['Urls']['api'])
+        df = asyncio.run(fetch_names(ids=[1], base_url=self.config['Urls']['api']))
         assert df.shape == (1, 2), 'Unexpected dataframe dimensions'
         assert list(df.columns) == ['id_funcionario', 'nome_funcionario'], 'Unexpected columns'
 

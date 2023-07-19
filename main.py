@@ -6,6 +6,7 @@ from datetime import datetime
 import yaml
 import pandas as pd
 from sqlalchemy import Engine
+import asyncio
 
 # local imports
 from connect import postgres_connection
@@ -37,7 +38,7 @@ def main(postgres_server_connection:Engine, postgres_local_connection:Engine, po
     # fetching requested data
     logger.info('Fetching data')
     df = fetch_data(postgres_server_connection, postgres_query)
-    names_df = fetch_names(list(df['id_funcionario'].unique()), api_url)
+    names_df = asyncio.run(fetch_names(list(df['id_funcionario'].unique()), api_url))
     categories_df = fetch_categories(parquet_url)
 
     # merge fetched data into a definitive dataframe
@@ -50,7 +51,7 @@ def main(postgres_server_connection:Engine, postgres_local_connection:Engine, po
     df.to_sql('venda', postgres_local_connection, index=False, if_exists='replace')
 
 if __name__ == '__main__':
-    
+
     # load configurations
     with open('config.yaml') as config_file:
         config = yaml.safe_load(config_file)
