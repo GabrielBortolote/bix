@@ -1,4 +1,6 @@
-# PIPELINE DATA WITH PYTHON
+# Pipeline data with Pandas
+
+## Challenge description
 
 The technical challenge will consist of solving the following problem. We have three data sources with the following information:
 
@@ -14,17 +16,17 @@ To make it clearer, here is an image of the desired architecture:
 
 ![challenge](./readme_images/challenge.png/)
 
-## SOLUTION
+## Solution
 
-To solve this data pipeline we can use simple python data handling techiniques to transform the given data into pandas dataframes and then handle the dataframes the way we want.
+To solve this data pipeline, we can use simple Python data handling techniques to transform the given data into pandas dataframes and then handle the dataframes the way we want.
 
-Querying data from a SQL database is very simple using pandas, we just need to create the connection with the provided database and then quey the data using a SQL query. Pandas already have a function that receives the connection and the query and then return the dataframe with the database reply:
+Querying data from a SQL database is straightforward using pandas. We just need to create the connection with the provided database and then query the data using an SQL query. Pandas already has a function that receives the connection and the query and then returns the dataframe with the database reply:
 
 ```python
 df = pd.read_sql_query(query, connection)
 ```
 
-Querying data from an API is more complicated, we need to do one web request for each employee listed on the query above, we can do it asynchronously to be faster, this way, all the requests are triggered together instead of triggering the next one only when the previous one is completed:
+Querying data from an API is more complicated. We need to make one web request for each employee listed in the query above. We can do it asynchronously to be faster, this way, all the requests are triggered together instead of triggering the next one only when the previous one is completed:
 
 ```python
 
@@ -45,14 +47,14 @@ results = await asyncio.gather(*tasks)
 
 ```
 
-This way, on the end of the execution, all the responses are going to be inside the variable results and then we can easily convert this to a dataframe:
+This way, at the end of the execution, all the responses are going to be inside the variable results, and then we can easily convert this to a dataframe:
 
 ```python
 pd.DataFrame({'id_funcionario': ids, 'nome_funcionario': results})
 
 ```
 
-The parquet file needs a low level approach, once we have the link to the file on the web we can request the bytes of the file and them convert them into a pyarrow table, this kind of table have a function that easily convert it self into a pandas dataframe:
+The parquet file needs a low-level approach. Once we have the link to the file on the web, we can request the bytes of the file and then convert them into a pyarrow table. This kind of table has a function that easily converts itself into a pandas dataframe:
 
 ```python
 import pyarrow as pa
@@ -71,7 +73,7 @@ table = pq.read_table(parquet_data)
 df = table.to_pandas()
 ```
 
-After fecthing all data we are going to have 3 dataframes, the main df, queried from the database, the names_df queried from API and the categories_df queried from the parquet web file. Now we can use pandas to easily merge them:
+After fetching all data, we are going to have 3 dataframes: the main df, queried from the database, the names_df queried from the API, and the categories_df queried from the parquet web file. Now we can use pandas to easily merge them:
 
 ```python
 # merge fetched data into a definitive dataframe
@@ -83,7 +85,7 @@ Done, we have a final dataframe, ready to be exported whatever we want.
 
 ## DATA ANALYTICS
 
-With the result dataframe it is possible to do some data analysis. Like:
+With the resulting dataframe, it is possible to do some data analysis. Like:
 
 Cumulative sales over time:
 
@@ -97,3 +99,34 @@ Categories comparative by value and by percentage:
 Employee comparative:
 
 ![categories pie](./graphs/4-bar_chart_employee.png)
+
+## Orchestration
+
+To create an orchestrator for this file is very simple using Apache Airflow. First install Apache Airflow in your machine and keep the scheduler running, you can run run the webserver to have a GUI to help you creating the schedules too. To trigger the script we only need to call the main script, like a bash command:
+
+``` bash
+python main.py
+```
+
+But we need to ensure that the virtual environment is activated, so we need a commnand like this:
+
+```bash
+source venv/bin/activate && python main.py
+```
+
+So we can create a Bash dag containing the necessary commands and then copy it into the dags standart directory, this way Airflow can read the dag and create the task for us.
+
+```python
+with DAG('data_extraction', description='Data extraction using pandas',
+        schedule_interval='0 0 * * *',  # Execute the task daily at midnight
+        start_date=datetime(2023, 7, 20), catchup=False) as dag:
+
+# Define the BashOperator to run the Bash script
+run_bash_script_task = BashOperator(
+    task_id='run_bash_script_task',
+    bash_command='cd /home/borto/Projects/pipeline-data-with-python && source venv/bin/activate && python main.py',
+    dag=dag
+    )
+```
+
+Open Apache Airflow GUI on the web server and make sure that the DAG is active, this is enough to trigger the script every day.

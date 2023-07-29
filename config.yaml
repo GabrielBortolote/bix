@@ -11,7 +11,7 @@ Urls:
 Output:
     host: localhost
     port: 5432
-    database: bix_challenge
+    database: data_extraction_using_pandas
 
 Paths:
     log: /home/borto/Projects/bix/log
